@@ -19,15 +19,13 @@ import (
 type Auth interface {
 
 	// Create function generates the Authentication Entity by processing
-	// incoming data and the specific 'bias'. The generated Authentication
-	// Entity has a string representation generated using
-	// `base64.URLEncoding` format.
-	Create(data []byte, bias interface{}) (string, error)
+	// incoming data and the specific 'bias'.
+	Create(data []byte, bias interface{}) ([]byte, error)
 
 	// Verify function checks the Authentication Entity by processing
 	// it with the optional incoming 'bias'. It also recovers the original
 	// 'data' and 'bias' used to create the Authentication Entity.
-	Verify(value string, bias interface{}) ([]byte, interface{}, error)
+	Verify(value []byte, bias interface{}) ([]byte, interface{}, error)
 
 	// Set function configures the Authentication Entity creation and
 	// verification process. It also accepts the static "Key" that needs
