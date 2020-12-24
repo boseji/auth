@@ -40,3 +40,6 @@ var ErrParameter = fmt.Errorf("error in supplied parameters")
 // ErrNotInitialized occurs when an Authentication process or function
 // tries to access an un-initialized data parameter or construct.
 var ErrNotInitialized = fmt.Errorf("error this construct is not initialized")
+
+// ErrNotImplemented occurs when an Un-implemented feature is called on
+var ErrNotImplemented = fmt.Errorf("error functionality not implemented yet")
