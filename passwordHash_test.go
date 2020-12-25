@@ -99,6 +99,22 @@ func Test_passwordHashBcrypt_Create(t *testing.T) {
 				bWeight: BcryptDefaultCost,
 			},
 		},
+		{
+			name: "Wrong negative weight",
+			args: args{
+				data:    []byte("Test Password"),
+				bWeight: -5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Wrong zero weight",
+			args: args{
+				data:    []byte("Test Password"),
+				bWeight: 0,
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -192,6 +208,234 @@ func Test_passwordHashBcrypt_Verify(t *testing.T) {
 			}
 			if !reflect.DeepEqual(got1, tt.want1) {
 				t.Errorf("passwordHashBcrypt.Verify() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func Test_passwordHashPbkdf2HS256_Set(t *testing.T) {
+	type args struct {
+		method string
+		in1    interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Incorrect Method",
+			args: args{
+				method: "Wrong Method Passed",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Method",
+			args: args{
+				method: MethodPasswordHashPbkdf2HS256,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &passwordHashPbkdf2HS256{}
+			if err := p.Set(tt.args.method, tt.args.in1); (err != nil) != tt.wantErr {
+				t.Errorf("passwordHashPbkdf2HS256.Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func Test_passwordHashPbkdf2HS256_Create(t *testing.T) {
+	type args struct {
+		data    []byte
+		bRounds interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "No Data",
+			args: args{
+				data:    nil,
+				bRounds: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Data",
+			args: args{
+				data:    []byte{},
+				bRounds: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Data",
+			args: args{
+				data:    []byte("Test Password"),
+				bRounds: nil,
+			},
+		},
+		{
+			name: "Wrong negative rounds",
+			args: args{
+				data:    []byte("Test Password"),
+				bRounds: -5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Wrong zero rounds",
+			args: args{
+				data:    []byte("Test Password"),
+				bRounds: 0,
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &passwordHashPbkdf2HS256{}
+			_, err := p.Create(tt.args.data, tt.args.bRounds)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("passwordHashPbkdf2HS256.Create() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func Test_passwordHashPbkdf2HS256_Verify(t *testing.T) {
+	type args struct {
+		value  []byte
+		digest interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    []byte
+		want1   interface{}
+		wantErr bool
+	}{
+		{
+			name: "No Value",
+			args: args{
+				value: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Value",
+			args: args{
+				value: []byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "No Digest",
+			args: args{
+				value: []byte{1, 2},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Wrong Digest type",
+			args: args{
+				value:  []byte{1, 2},
+				digest: 25,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Digest",
+			args: args{
+				value:  []byte{1, 2},
+				digest: []byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Digest",
+			args: args{
+				value:  []byte("Test Password"),
+				digest: decHex("001000000000000062657e7a8bf62f9feef5ecb2bf5af70db916555a76d23ea6481be869ceec0bb880b74d66a88e9de2"),
+			},
+			want:  decHex("001000000000000062657e7a8bf62f9feef5ecb2bf5af70db916555a76d23ea6481be869ceec0bb880b74d66a88e9de2"),
+			want1: Pbkdf2DefaultRounds,
+		},
+		{
+			name: "Corrupt Digest",
+			args: args{
+				value:  []byte("Test Password"),
+				digest: decHex("001000000000000062657e7a8bf62f9beef5ecb2bf5af70db916555a76d23ea6481be869ceec0bb880b74d66a88e9de2"),
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			p := &passwordHashPbkdf2HS256{}
+			got, got1, err := p.Verify(tt.args.value, tt.args.digest)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("passwordHashPbkdf2HS256.Verify() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("passwordHashPbkdf2HS256.Verify() got = %v, want %v", got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("passwordHashPbkdf2HS256.Verify() got1 = %v, want %v", got1, tt.want1)
+			}
+		})
+	}
+}
+
+func TestNewPasswordHash(t *testing.T) {
+	type args struct {
+		method string
+		key    interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    Auth
+		wantErr bool
+	}{
+		{
+			name: "Wrong Type",
+			args: args{
+				method: "Wrong Type",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Type Bcrypt",
+			args: args{
+				method: MethodPasswordHashBcrypt,
+			},
+			want: &passwordHashBcrypt{},
+		},
+		{
+			name: "Correct Type PBKDF2 HS256",
+			args: args{
+				method: MethodPasswordHashPbkdf2HS256,
+			},
+			want: &passwordHashPbkdf2HS256{},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := NewPasswordHash(tt.args.method, tt.args.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("NewPasswordHash() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewPasswordHash() = %v, want %v", got, tt.want)
 			}
 		})
 	}
