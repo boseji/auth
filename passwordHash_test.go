@@ -9,157 +9,189 @@ import (
 	"testing"
 )
 
-func Test_passwordHashHS256_Set(t *testing.T) {
-	type fields struct {
-		PasswordHash PasswordHash
-		initialized  bool
-		key          []byte
-	}
+func decHex(in string) []byte {
+	result, _ := FromHex(in)
+	return result
+}
+
+func Test_passwordHashBcrypt_Set(t *testing.T) {
 	type args struct {
 		method string
-		key    interface{}
+		in1    interface{}
 	}
 	tests := []struct {
 		name    string
-		fields  fields
+		p       *passwordHashBcrypt
 		args    args
 		wantErr bool
 	}{
 		{
-			name:   "Test Wrong Method",
-			fields: fields{},
+			name: "Incorrect Method",
+			p:    &passwordHashBcrypt{},
 			args: args{
-				method: "No Method",
-				key:    nil,
+				method: "Wrong Method Passed",
 			},
 			wantErr: true,
 		},
 		{
-			name:   "Test No Key",
-			fields: fields{},
+			name: "Correct Method",
+			p:    &passwordHashBcrypt{},
 			args: args{
-				method: MethodPasswordHashHS256,
-				key:    nil,
+				method: MethodPasswordHashBcrypt,
 			},
-			wantErr: true,
-		},
-		{
-			name:   "Test Wrong Key Type",
-			fields: fields{},
-			args: args{
-				method: MethodPasswordHashHS256,
-				key:    "123",
-			},
-			wantErr: true,
-		},
-		{
-			name:   "Test Empty Key",
-			fields: fields{},
-			args: args{
-				method: MethodPasswordHashHS256,
-				key:    []byte{},
-			},
-			wantErr: true,
-		},
-		{
-			name:   "Test Key with Wrong Size",
-			fields: fields{},
-			args: args{
-				method: MethodPasswordHashHS256,
-				key:    []byte{12, 13, 14, 15, 16},
-			},
-			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &passwordHashHS256{
-				PasswordHash: tt.fields.PasswordHash,
-				initialized:  tt.fields.initialized,
-				key:          tt.fields.key,
-			}
-			if err := p.Set(tt.args.method, tt.args.key); (err != nil) != tt.wantErr {
-				t.Errorf("passwordHashHS256.Set() error = %v, wantErr %v", err, tt.wantErr)
+			p := &passwordHashBcrypt{}
+			if err := p.Set(tt.args.method, tt.args.in1); (err != nil) != tt.wantErr {
+				t.Errorf("passwordHashBcrypt.Set() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
 	}
 }
 
-func Test_passwordHashHS256_Create(t *testing.T) {
-	type fields struct {
-		PasswordHash PasswordHash
-		initialized  bool
-		key          []byte
-	}
+func Test_passwordHashBcrypt_Create(t *testing.T) {
 	type args struct {
-		data []byte
-		in1  interface{}
+		data    []byte
+		bWeight interface{}
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
-		want    []byte
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "No Data",
+			args: args{
+				data:    nil,
+				bWeight: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Data",
+			args: args{
+				data:    []byte{},
+				bWeight: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Data",
+			args: args{
+				data:    []byte("Test Password"),
+				bWeight: nil,
+			},
+		},
+		{
+			name: "Wrong weight",
+			args: args{
+				data:    []byte("Test Password"),
+				bWeight: "test",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Weight",
+			args: args{
+				data:    []byte("Test Password"),
+				bWeight: BcryptDefaultCost,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &passwordHashHS256{
-				PasswordHash: tt.fields.PasswordHash,
-				initialized:  tt.fields.initialized,
-				key:          tt.fields.key,
-			}
-			got, err := p.Create(tt.args.data, tt.args.in1)
+			p := &passwordHashBcrypt{}
+			_, err := p.Create(tt.args.data, tt.args.bWeight)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("passwordHashHS256.Create() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("passwordHashBcrypt.Create() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("passwordHashHS256.Create() = %v, want %v", got, tt.want)
-			}
 		})
 	}
 }
 
-func Test_passwordHashHS256_Verify(t *testing.T) {
-	type fields struct {
-		PasswordHash PasswordHash
-		initialized  bool
-		key          []byte
-	}
+func Test_passwordHashBcrypt_Verify(t *testing.T) {
 	type args struct {
-		value []byte
-		bias  interface{}
+		value  []byte
+		digest interface{}
 	}
 	tests := []struct {
 		name    string
-		fields  fields
 		args    args
 		want    []byte
 		want1   interface{}
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "No Value",
+			args: args{
+				value: nil,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Value",
+			args: args{
+				value: []byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "No Digest",
+			args: args{
+				value: []byte{1, 2},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Wrong Digest type",
+			args: args{
+				value:  []byte{1, 2},
+				digest: 25,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Empty Digest",
+			args: args{
+				value:  []byte{1, 2},
+				digest: []byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Correct Digest",
+			args: args{
+				value:  []byte("Test Password"),
+				digest: decHex("2432612431302430646359484566793038486d65353944456c646947756f523856424b566234676f662f3974373038624a3156526e52733366775469"),
+			},
+			want:  decHex("2432612431302430646359484566793038486d65353944456c646947756f523856424b566234676f662f3974373038624a3156526e52733366775469"),
+			want1: BcryptDefaultCost,
+		},
+		{
+			name: "Corrupt Digest",
+			args: args{
+				value:  []byte("Test Password"),
+				digest: decHex("2532612431302430646359484566793038486d65353944456c646947756f523856424b566234676f662f3974373038624a3156526e52733366775469"),
+			},
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			p := &passwordHashHS256{
-				PasswordHash: tt.fields.PasswordHash,
-				initialized:  tt.fields.initialized,
-				key:          tt.fields.key,
-			}
-			got, got1, err := p.Verify(tt.args.value, tt.args.bias)
+			p := &passwordHashBcrypt{}
+			got, got1, err := p.Verify(tt.args.value, tt.args.digest)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("passwordHashHS256.Verify() error = %v, wantErr %v", err, tt.wantErr)
+				t.Errorf("passwordHashBcrypt.Verify() error = %v, wantErr %v", err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("passwordHashHS256.Verify() got = %v, want %v", got, tt.want)
+				t.Errorf("passwordHashBcrypt.Verify() got = %v, want %v", got, tt.want)
 			}
 			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("passwordHashHS256.Verify() got1 = %v, want %v", got1, tt.want1)
+				t.Errorf("passwordHashBcrypt.Verify() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
 	}
