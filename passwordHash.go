@@ -186,6 +186,9 @@ func (p *passwordHashPbkdf2HS256) Verify(value []byte, digest interface{}) ([]by
 	}
 
 	sourceRounds := int(bRounds)
+	if sourceRounds > Pbkdf2MaxRounds {
+		sourceRounds = Pbkdf2MaxRounds
+	}
 
 	sourceSalt := make([]byte, Pbkdf2SaltSize)
 	n, err := source.Read(sourceSalt)

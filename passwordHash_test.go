@@ -10,7 +10,7 @@ import (
 )
 
 func decHex(in string) []byte {
-	result, _ := FromHex(in)
+	result, _ := Decode(Hex, in)
 	return result
 }
 
