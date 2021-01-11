@@ -20,12 +20,12 @@ type Auth interface {
 
 	// Create function generates the Authentication Entity by processing
 	// incoming data and the specific 'bias'.
-	Create(data []byte, bias interface{}) ([]byte, error)
+	Create(data []byte, bias interface{}) (output []byte, err error)
 
 	// Verify function checks the Authentication Entity by processing
 	// it with the optional incoming 'bias'. It also recovers the original
 	// 'data' and 'bias' used to create the Authentication Entity.
-	Verify(value []byte, bias interface{}) ([]byte, interface{}, error)
+	Verify(value []byte, bias interface{}) (data []byte, iBias interface{}, err error)
 
 	// Set function configures the Authentication Entity creation and
 	// verification process. It also accepts the static "Key" that needs
@@ -43,3 +43,7 @@ var ErrNotInitialized = fmt.Errorf("error this construct is not initialized")
 
 // ErrNotImplemented occurs when an Un-implemented feature is called on
 var ErrNotImplemented = fmt.Errorf("error functionality not implemented yet")
+
+// ErrNotSupported occurs when a particular feature is not implemented or
+//  logically not supported in the current context
+var ErrNotSupported = fmt.Errorf("error the option or operation is not supported")

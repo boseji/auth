@@ -7,6 +7,7 @@ package auth
 import (
 	"encoding/base64"
 	"encoding/hex"
+	"fmt"
 	"sync"
 )
 
@@ -105,4 +106,31 @@ func Decode(f *EncodeIt, value string) ([]byte, error) {
 	}
 
 	return e.From(value)
+}
+
+// Create method from the Auth Interface
+func (e *EncodeIt) Create(data []byte, encode interface{}) (output []byte, err error) {
+	en, ok := encode.(bool)
+	if !ok {
+		return nil, ErrParameter
+	}
+
+	if en {
+		result := Encode(e, data)
+		if result == "" {
+			return nil, fmt.Errorf("Failed to encode in EncodeIt.Create")
+		}
+		return []byte(result), nil
+	}
+	return Decode(e, string(data))
+}
+
+// Verify method from the Auth Interface
+func (e *EncodeIt) Verify(value []byte, bias interface{}) (data []byte, iBias interface{}, err error) {
+	return nil, nil, ErrNotSupported
+}
+
+// Set Method from the Auth Interface
+func (e *EncodeIt) Set(method string, key interface{}) error {
+	return ErrNotSupported
 }

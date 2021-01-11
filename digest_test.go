@@ -269,7 +269,7 @@ func TestDigest_Misc(t *testing.T) {
 		crypto.RegisterHash(crypto.SHA1, eHash.New)
 		defer crypto.RegisterHash(crypto.SHA1, sha1.New)
 
-		_, err := Sha1.Proc([]byte{1, 2, 3})
+		_, err := Sha1.Get([]byte{1, 2, 3})
 		if err == nil {
 			t.Errorf("HashFunc() got = nil, want error")
 		}

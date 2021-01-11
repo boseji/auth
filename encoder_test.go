@@ -124,3 +124,87 @@ func TestDecode(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeIt_Set(t *testing.T) {
+	if err := Hex.Set("test", nil); err == nil {
+		t.Errorf("EncodeIt.Set() error = %v, wantErr %v", err, ErrNotSupported)
+	}
+}
+
+func TestEncodeIt_Verify(t *testing.T) {
+	if _, _, err := Hex.Verify(nil, nil); err == nil {
+		t.Errorf("EncodeIt.Verify() error = %v, wantErr %v", err, ErrNotSupported)
+	}
+}
+
+func TestEncodeIt_Create(t *testing.T) {
+	type args struct {
+		data   []byte
+		encode interface{}
+	}
+	tests := []struct {
+		name       string
+		e          *EncodeIt
+		args       args
+		wantOutput []byte
+		wantErr    bool
+	}{
+		{
+			name: "Bad Parameter Type",
+			e:    Hex,
+			args: args{
+				data:   nil,
+				encode: "bad",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Invalid Encoder Type",
+			e:    badMockEncoder,
+			args: args{
+				data:   []byte{1, 5, 6},
+				encode: true,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Good Encode",
+			e:    Hex,
+			args: args{
+				data:   []byte{1, 5, 6},
+				encode: true,
+			},
+			wantOutput: []byte("010506"),
+		},
+		{
+			name: "Invalid Decoder Type",
+			e:    badMockEncoder,
+			args: args{
+				data:   []byte("010506"),
+				encode: false,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Good Decoder",
+			e:    Hex,
+			args: args{
+				data:   []byte("010506"),
+				encode: false,
+			},
+			wantOutput: []byte{1, 5, 6},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotOutput, err := tt.e.Create(tt.args.data, tt.args.encode)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EncodeIt.Create() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(gotOutput, tt.wantOutput) {
+				t.Errorf("EncodeIt.Create() = %v, want %v", gotOutput, tt.wantOutput)
+			}
+		})
+	}
+}

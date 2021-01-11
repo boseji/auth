@@ -25,9 +25,9 @@ type DigestIt interface {
 	// Name Returns the Name in String for the given Hash Function
 	Name() string
 
-	// Proc function takes in the byte array of arbitrary Size and
+	// Get function takes in the byte array of arbitrary Size and
 	// process it into a digest of fix size
-	Proc([]byte) ([]byte, error)
+	Get([]byte) ([]byte, error)
 }
 
 // DigestOptions provides a functional Option for attribute modification functions
@@ -143,8 +143,8 @@ func (h *HashFn) Size() int {
 	return h.Hash.Size()
 }
 
-// Proc method implementation for DigestIt
-func (h *HashFn) Proc(data []byte) ([]byte, error) {
+// Get method implementation for DigestIt
+func (h *HashFn) Get(data []byte) ([]byte, error) {
 	if data == nil || len(data) == 0 {
 		return nil, ErrParameter
 	}
@@ -161,8 +161,8 @@ func (h *HashFn) Proc(data []byte) ([]byte, error) {
 	return result, nil
 }
 
-// Proc method implementation for DigestIt
-func (h *hmacFn) Proc(data []byte) ([]byte, error) {
+// Get method implementation for DigestIt
+func (h *hmacFn) Get(data []byte) ([]byte, error) {
 	if data == nil || len(data) == 0 {
 		return nil, ErrParameter
 	}
@@ -182,12 +182,13 @@ func (h *hmacFn) Proc(data []byte) ([]byte, error) {
 // For Mock
 var bcryptGenerate = bcrypt.GenerateFromPassword
 
-func (b *BcryptFn) operation(data []byte, cost int) ([]byte, error) {
-	if data == nil || len(data) == 0 {
+// Generate creates the Bcrypt digest of the password
+func (b *BcryptFn) Generate(password []byte, cost int) ([]byte, error) {
+	if password == nil || len(password) == 0 {
 		return nil, ErrParameter
 	}
 
-	result, err := bcryptGenerate(data, cost)
+	result, err := bcryptGenerate(password, cost)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate bcrypt hash - %w", err)
 	}
@@ -198,11 +199,12 @@ func (b *BcryptFn) operation(data []byte, cost int) ([]byte, error) {
 // For Mock
 var bcryptCompare = bcrypt.CompareHashAndPassword
 
-func (b *BcryptFn) verify(orig []byte, digest []byte) error {
-	if orig == nil || digest == nil || len(orig) == 0 || len(digest) == 0 {
+// Check function verify at the password against the Bcrypt digest
+func (b *BcryptFn) Check(password []byte, digest []byte) error {
+	if password == nil || digest == nil || len(password) == 0 || len(digest) == 0 {
 		return ErrParameter
 	}
-	err := bcryptCompare(digest, orig)
+	err := bcryptCompare(digest, password)
 	if err != nil {
 		return fmt.Errorf("bcrypt compare failed - %w", err)
 	}
@@ -215,19 +217,19 @@ func (b *BcryptFn) Name() string {
 	return b.FnName
 }
 
-// Proc method implementation for DigestIt
-func (b *BcryptFn) Proc(data []byte) ([]byte, error) {
-	return b.operation(data, bcrypt.DefaultCost)
+// Get method implementation for DigestIt
+func (b *BcryptFn) Get(data []byte) ([]byte, error) {
+	return b.Generate(data, bcrypt.DefaultCost)
 }
 
-// Proc method implementation for DigestIt
-func (b *bcryptWithCost) Proc(data []byte) ([]byte, error) {
-	return b.BcryptFn.operation(data, b.cost)
+// Get method implementation for DigestIt
+func (b *bcryptWithCost) Get(data []byte) ([]byte, error) {
+	return b.BcryptFn.Generate(data, b.cost)
 }
 
-// Proc method implementation for DigestIt
-func (b *bcryptVerify) Proc(data []byte) ([]byte, error) {
-	err := b.BcryptFn.verify(data, b.digest)
+// Get method implementation for DigestIt
+func (b *bcryptVerify) Get(data []byte) ([]byte, error) {
+	err := b.BcryptFn.Check(data, b.digest)
 	if err != nil {
 		return nil, err
 	}
@@ -295,5 +297,5 @@ func Digest(d DigestIt, data []byte, opts ...DigestOptions) ([]byte, error) {
 		}
 	}
 
-	return dig.Proc(data)
+	return dig.Get(data)
 }
