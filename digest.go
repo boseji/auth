@@ -28,38 +28,71 @@ type DigestIt interface {
 	// Get function takes in the byte array of arbitrary Size and
 	// process it into a digest of fix size
 	Get([]byte) ([]byte, error)
+
+	// Auth Interface is Implemented here
+	Auth
 }
 
 // DigestOptions provides a functional Option for attribute modification functions
 type DigestOptions func(DigestIt) DigestIt
 
-// HashFn function implements the DigestIt interface
-type HashFn struct {
+// hashFn function implements the DigestIt interface
+type hashFn struct {
 	FnName string
 	Hash   crypto.Hash
 }
 
 // hmacFn implements the standard Hash functions along with HMAC operation
 type hmacFn struct {
-	*HashFn
+	DigestIt
 	key []byte
 }
 
-// BcryptFn implements the DigestIt interface but needs a special option to work
-type BcryptFn struct {
+// hmacVerify helps to check the HMAC digest
+type hmacVerify struct {
+	DigestIt
+	digest []byte
+}
+
+// bcryptFn implements the DigestIt interface but needs a special option to work
+type bcryptFn struct {
 	FnName string
 }
 
 // bcryptWithCost implements the DigestIt interface with Custom Cost
 type bcryptWithCost struct {
-	*BcryptFn
+	DigestIt
 	cost int
 }
 
+// bcryptVerify helps to check the bcrypt digest
 type bcryptVerify struct {
-	*BcryptFn
+	DigestIt
 	digest []byte
 }
+
+const (
+	// BcryptDefaultCost is the Bcrypt Default Cost where the performace is optimal
+	BcryptDefaultCost = bcrypt.DefaultCost
+	// BcryptMaxCost is the Bcrypt Maximum Cost with Longest Time
+	BcryptMaxCost = bcrypt.MaxCost
+	// BcryptMinCost is the Bcrypt Minimum Cost with Shortest time
+	BcryptMinCost = bcrypt.MinCost
+	// MethodMD5 describes the MD5 Hashing Algorithm
+	MethodMD5 = "MD5"
+	// MethodSHA1 describes the SHA1 Hashing Algorithm
+	MethodSHA1 = "SHA1"
+	// MethodSHA224 describes the SHA224 Hashing Algorithm
+	MethodSHA224 = "SHA224"
+	// MethodSHA256 describes the SHA256 Hashing Algorithm
+	MethodSHA256 = "SHA256"
+	// MethodSHA384 describes the SHA384 Hashing Algorithm
+	MethodSHA384 = "SHA384"
+	// MethodSHA512 describes the SHA512 Hashing Algorithm
+	MethodSHA512 = "SHA512"
+	// MethodBcrypt describes the bcrypt Hashing Algorithm
+	MethodBcrypt = "bcrypt"
+)
 
 // List of All the Digest functions
 var digestFuncs = map[string]DigestIt{}
@@ -69,35 +102,35 @@ var digestFuncsLock = new(sync.RWMutex)
 
 // List of Hash Functions
 var (
-	Md5    *HashFn
-	Sha1   *HashFn
-	Sha224 *HashFn
-	Sha256 *HashFn
-	Sha384 *HashFn
-	Sha512 *HashFn
-	Bcrypt *BcryptFn
+	Md5    *hashFn
+	Sha1   *hashFn
+	Sha224 *hashFn
+	Sha256 *hashFn
+	Sha384 *hashFn
+	Sha512 *hashFn
+	Bcrypt *bcryptFn
 )
 
 func init() {
-	Md5 = &HashFn{FnName: "MD5", Hash: crypto.MD5}
+	Md5 = &hashFn{FnName: MethodMD5, Hash: crypto.MD5}
 	RegisterDigestFunction(Md5.FnName, Md5)
 
-	Sha1 = &HashFn{FnName: "SHA1", Hash: crypto.SHA1}
+	Sha1 = &hashFn{FnName: MethodSHA1, Hash: crypto.SHA1}
 	RegisterDigestFunction(Sha1.FnName, Sha1)
 
-	Sha224 = &HashFn{FnName: "SHA224", Hash: crypto.SHA224}
+	Sha224 = &hashFn{FnName: MethodSHA224, Hash: crypto.SHA224}
 	RegisterDigestFunction(Sha224.FnName, Sha224)
 
-	Sha256 = &HashFn{FnName: "SHA256", Hash: crypto.SHA256}
+	Sha256 = &hashFn{FnName: MethodSHA256, Hash: crypto.SHA256}
 	RegisterDigestFunction(Sha256.FnName, Sha256)
 
-	Sha384 = &HashFn{FnName: "SHA384", Hash: crypto.SHA384}
+	Sha384 = &hashFn{FnName: MethodSHA384, Hash: crypto.SHA384}
 	RegisterDigestFunction(Sha384.FnName, Sha384)
 
-	Sha512 = &HashFn{FnName: "SHA512", Hash: crypto.SHA512}
+	Sha512 = &hashFn{FnName: MethodSHA512, Hash: crypto.SHA512}
 	RegisterDigestFunction(Sha512.FnName, Sha512)
 
-	Bcrypt = &BcryptFn{FnName: "bcrypt"}
+	Bcrypt = &bcryptFn{FnName: MethodBcrypt}
 	RegisterDigestFunction(Bcrypt.FnName, Bcrypt)
 }
 
@@ -124,27 +157,27 @@ func GetDigestFunction(name string) (f DigestIt) {
 }
 
 // Name method of the DigestIt Interface
-func (h *HashFn) Name() string {
+func (h *hashFn) Name() string {
 	return h.FnName
 }
 
 // HashFunc method returns the internal Hash Function unit of Crypto
-func (h *HashFn) HashFunc() crypto.Hash {
+func (h *hashFn) HashFunc() crypto.Hash {
 	return h.Hash
 }
 
 // New method creates a new instance of the Internal New Method
-func (h *HashFn) New() hash.Hash {
+func (h *hashFn) New() hash.Hash {
 	return h.Hash.New()
 }
 
 // Size method exposes the internal Size Method
-func (h *HashFn) Size() int {
+func (h *hashFn) Size() int {
 	return h.Hash.Size()
 }
 
 // Get method implementation for DigestIt
-func (h *HashFn) Get(data []byte) ([]byte, error) {
+func (h *hashFn) Get(data []byte) ([]byte, error) {
 	if data == nil || len(data) == 0 {
 		return nil, ErrParameter
 	}
@@ -161,13 +194,45 @@ func (h *HashFn) Get(data []byte) ([]byte, error) {
 	return result, nil
 }
 
+// Create Method from Auth interface wraps the Get method
+func (h *hashFn) Create(data []byte, _ interface{}) (output []byte, err error) {
+	return h.Get(data)
+}
+
+// Verify Method from Auth interface can be used for Compare
+func (h *hashFn) Verify(hash1 []byte, hash2 interface{}) (h1 []byte, h2 interface{}, err error) {
+	if hash1 == nil || len(hash1) == 0 || hash2 == nil {
+		return nil, nil, ErrParameter
+	}
+	buf, ok := hash2.([]byte)
+	if !ok || len(buf) != len(hash1) {
+		return nil, nil, ErrParameter
+	}
+
+	if hmac.Equal(hash1, buf) {
+		return hash1, buf, nil
+	}
+
+	return nil, nil, fmt.Errorf("verification failed in HashFn.Verify")
+}
+
+// Set Method from Auth interface is generally not support it only
+//  return error when called with wrong method name
+func (h *hashFn) Set(method string, _ interface{}) error {
+	if method != h.FnName {
+		return ErrParameter
+	}
+	return nil
+}
+
 // Get method implementation for DigestIt
 func (h *hmacFn) Get(data []byte) ([]byte, error) {
 	if data == nil || len(data) == 0 {
 		return nil, ErrParameter
 	}
 
-	fn := hmac.New(h.HashFn.New, h.key)
+	hm := h.DigestIt.(*hashFn)
+	fn := hmac.New(hm.HashFunc().New, h.key)
 
 	_, err := fn.Write(data)
 	if err != nil {
@@ -179,11 +244,27 @@ func (h *hmacFn) Get(data []byte) ([]byte, error) {
 	return result, nil
 }
 
+// Get method implementation for DigestIt
+func (h *hmacVerify) Get(data []byte) ([]byte, error) {
+	input := data
+	// In case HMAC was requested
+	if _, ok := h.DigestIt.(*hmacFn); ok {
+		buf, err := h.DigestIt.Get(data)
+		if err != nil {
+			return nil, err
+		}
+		input = make([]byte, len(buf))
+		copy(input, buf)
+	}
+	h1, _, err := h.Verify(input, h.digest)
+	return h1, err
+}
+
 // For Mock
 var bcryptGenerate = bcrypt.GenerateFromPassword
 
 // Generate creates the Bcrypt digest of the password
-func (b *BcryptFn) Generate(password []byte, cost int) ([]byte, error) {
+func (b *bcryptFn) Generate(password []byte, cost int) ([]byte, error) {
 	if password == nil || len(password) == 0 {
 		return nil, ErrParameter
 	}
@@ -200,7 +281,7 @@ func (b *BcryptFn) Generate(password []byte, cost int) ([]byte, error) {
 var bcryptCompare = bcrypt.CompareHashAndPassword
 
 // Check function verify at the password against the Bcrypt digest
-func (b *BcryptFn) Check(password []byte, digest []byte) error {
+func (b *bcryptFn) Check(password []byte, digest []byte) error {
 	if password == nil || digest == nil || len(password) == 0 || len(digest) == 0 {
 		return ErrParameter
 	}
@@ -213,23 +294,67 @@ func (b *BcryptFn) Check(password []byte, digest []byte) error {
 }
 
 // Name method of the DigestIt Interface
-func (b *BcryptFn) Name() string {
+func (b *bcryptFn) Name() string {
 	return b.FnName
 }
 
 // Get method implementation for DigestIt
-func (b *BcryptFn) Get(data []byte) ([]byte, error) {
-	return b.Generate(data, bcrypt.DefaultCost)
+func (b *bcryptFn) Get(data []byte) ([]byte, error) {
+	return b.Create(data, bcrypt.DefaultCost)
+}
+
+// Create Method from Auth interface is a wrapper for Generate function
+func (b *bcryptFn) Create(password []byte, bCost interface{}) (dig []byte, err error) {
+	if bCost == nil {
+		return nil, ErrParameter
+	}
+	cost, ok := bCost.(int)
+	if !ok {
+		cost = bcrypt.DefaultCost
+	}
+
+	if cost > bcrypt.MaxCost {
+		cost = bcrypt.MaxCost
+	} else if cost < bcrypt.MinCost {
+		cost = bcrypt.MinCost
+	}
+
+	return b.Generate(password, cost)
+}
+
+// Verify Method from Auth interface is a wrapper for Check function
+func (b *bcryptFn) Verify(password []byte, bDig interface{}) (pass []byte, iDig interface{}, err error) {
+	if bDig == nil {
+		return nil, nil, ErrParameter
+	}
+	dig, ok := bDig.([]byte)
+	if !ok || len(dig) == 0 {
+		return nil, nil, ErrParameter
+	}
+
+	err = b.Check(password, dig)
+	if err != nil {
+		return nil, nil, err
+	}
+	return password, dig, nil
+}
+
+// Set Method from Auth interface
+func (b *bcryptFn) Set(method string, key interface{}) error {
+	if method != b.FnName {
+		return ErrParameter
+	}
+	return nil
 }
 
 // Get method implementation for DigestIt
 func (b *bcryptWithCost) Get(data []byte) ([]byte, error) {
-	return b.BcryptFn.Generate(data, b.cost)
+	return b.Create(data, b.cost)
 }
 
 // Get method implementation for DigestIt
 func (b *bcryptVerify) Get(data []byte) ([]byte, error) {
-	err := b.BcryptFn.Check(data, b.digest)
+	_, _, err := b.Verify(data, b.digest)
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +364,7 @@ func (b *bcryptVerify) Get(data []byte) ([]byte, error) {
 // WithHMACKey helps to implement HMAC operation
 func WithHMACKey(key []byte) DigestOptions {
 	return func(d DigestIt) DigestIt {
-		if h, ok := d.(*HashFn); ok {
+		if h, ok := d.(*hashFn); ok {
 			// New Encapsulated value
 			hm := &hmacFn{h, key}
 			return hm
@@ -251,7 +376,7 @@ func WithHMACKey(key []byte) DigestOptions {
 // WithBcryptCost helps to implement Alternative Bcrypt operation
 func WithBcryptCost(cost int) DigestOptions {
 	return func(d DigestIt) DigestIt {
-		if b, ok := d.(*BcryptFn); ok {
+		if b, ok := d.(*bcryptFn); ok {
 			// Verify Cost range
 			if cost > bcrypt.MaxCost {
 				cost = bcrypt.DefaultCost
@@ -266,12 +391,24 @@ func WithBcryptCost(cost int) DigestOptions {
 	}
 }
 
-// WithBcryptDigest helps to implement Verification as part of Digest
-func WithBcryptDigest(digest []byte) DigestOptions {
+// WithDigest helps to implement Verification as part of Digest operations
+func WithDigest(digest []byte) DigestOptions {
 	return func(d DigestIt) DigestIt {
-		if b, ok := d.(*BcryptFn); ok {
+		if b, ok := d.(*bcryptFn); ok {
 			bv := &bcryptVerify{b, digest}
 			return bv
+		}
+		if b, ok := d.(*bcryptWithCost); ok {
+			bv := &bcryptVerify{b, digest}
+			return bv
+		}
+		if h, ok := d.(*hashFn); ok {
+			hv := &hmacVerify{h, digest}
+			return hv
+		}
+		if h, ok := d.(*hmacFn); ok {
+			hv := &hmacVerify{h, digest}
+			return hv
 		}
 		return d
 	}

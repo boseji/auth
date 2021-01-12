@@ -24,7 +24,6 @@ const Pbkdf2SaltSize int = 8
 const Pbkdf2RoundsSize int = 8
 
 // For Mock
-var getRandom = GetRandom
 var readFull = io.ReadFull
 
 // GetRandom returns a cryptographically safe randome numbers byte array
@@ -44,7 +43,6 @@ func GetRandom(size int) ([]byte, error) {
 }
 
 // For Mock
-var uuidV4 = UUIDv4
 var uuidFn = uuid.NewV4
 
 // UUIDv4 function helps to generate UUID using V4 algorithm
