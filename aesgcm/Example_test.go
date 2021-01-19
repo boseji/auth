@@ -93,3 +93,42 @@ func ExampleDecrypt() {
 	// Plain Text: exampleplaintext
 	//
 }
+
+func ExampleNew() {
+	// Load your secret key from a safe place and reuse it across multiple
+	// Seal/Open calls. (Obviously don't use this example key for anything
+	// real.) If you want to convert a passphrase to a key, use a suitable
+	// package like bcrypt or scrypt.
+	// When decoded the key should be 16 bytes (AES-128) or 32 (AES-256).
+	key, _ := hex.DecodeString("6368616e676520746869732070617373776f726420746f206120736563726574")
+	plaintext := []byte("exampleplaintext")
+
+	// Create the Crypt instance to perfrom AES-GCM operations
+	crypt, err := aesgcm.New(aesgcm.AES256, key)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Encryption :  Nonce, it will be automatically be generated automatically
+	// and placed inside the Cipher text
+	ciphertext, err := crypt.Encrypt(plaintext)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Decryption : Same Ciphertext as from encryption
+	plaintext2, _, err := crypt.Decrypt(ciphertext)
+	if err != nil {
+		panic(err.Error())
+	}
+
+	// Cryptographically secure constant time comparison
+	if subtle.ConstantTimeCompare(plaintext, plaintext2) != 1 {
+		fmt.Println("Error results don't match")
+		return
+	}
+
+	fmt.Println("Success !")
+
+	// Output: Success !
+}

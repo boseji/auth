@@ -6,6 +6,7 @@ package aesgcm
 
 import (
 	"crypto/cipher"
+	"crypto/subtle"
 	"encoding/hex"
 	"reflect"
 	"testing"
@@ -84,6 +85,106 @@ func TestBasic(t *testing.T) {
 		})
 	}
 
+	tests2 := []struct {
+		name    string
+		method  string
+		keysize int
+	}{
+		{
+			name:    "Crypt AES-GCM-128 Normal",
+			method:  AES128,
+			keysize: KeySizeAES128,
+		},
+		{
+			name:    "Crypt AES-GCM-192 Normal",
+			method:  AES192,
+			keysize: KeySizeAES192,
+		},
+		{
+			name:    "Crypt AES-GCM-256 Normal",
+			method:  AES256,
+			keysize: KeySizeAES256,
+		},
+		{
+			name:    "Crypt AES-GCM-128 Short Key",
+			method:  AES128,
+			keysize: KeySizeAES128 - 1,
+		},
+		{
+			name:    "Crypt AES-GCM-192 Short Key",
+			method:  AES192,
+			keysize: KeySizeAES192 - 1,
+		},
+		{
+			name:    "Crypt AES-GCM-256 Short Key",
+			method:  AES256,
+			keysize: KeySizeAES256 - 1,
+		},
+		{
+			name:    "Crypt AES-GCM-128 Long Key",
+			method:  AES128,
+			keysize: KeySizeAES128 + 10,
+		},
+		{
+			name:    "Crypt AES-GCM-192 Long Key",
+			method:  AES192,
+			keysize: KeySizeAES192 + 10,
+		},
+		{
+			name:    "Crypt AES-GCM-256 Long Key",
+			method:  AES256,
+			keysize: KeySizeAES256 + 10,
+		},
+	}
+
+	for _, tt := range tests2 {
+		t.Run(tt.name, func(t *testing.T) {
+
+			key, err := auth.GetRandom(tt.keysize)
+			if err != nil {
+				t.Errorf("Error in generating key - %v", err)
+				return
+			}
+
+			plaintext, err := auth.GetRandom(tt.keysize * 2)
+			if err != nil {
+				t.Errorf("Error in generating plaintext - %v", err)
+				return
+			}
+
+			c, err := New(tt.method, key)
+			if err != nil {
+				t.Errorf("Failed in New() expected nil error, got %v", err)
+			}
+
+			cipherText, err := c.Create(plaintext, nil)
+			if err != nil {
+				t.Errorf("Failed in Crypt.Create() expected nil error, got %v", err)
+				return
+			}
+
+			c2, err := New(tt.method, key)
+			if err != nil {
+				t.Errorf("Failed in New() II expected nil error, got %v", err)
+			}
+
+			plaintext2, nonce, err := c2.Verify(cipherText, nil)
+			if err != nil {
+				t.Errorf("Failed in Encrypt() expected nil error, got %v", err)
+				return
+			}
+
+			if !reflect.DeepEqual(plaintext, plaintext2) {
+				t.Errorf("Failed to get AES Decryption correct - \nExpected %x, \n  got %x", plaintext, plaintext2)
+				return
+			}
+
+			if nonce == nil {
+				t.Errorf("Failed to get Nonce correct - Got Nil")
+				return
+			}
+		})
+	}
 }
 
 func TestEncrypt(t *testing.T) {
@@ -350,4 +451,308 @@ func TestDecrypt_Misc(t *testing.T) {
 			return
 		}
 	})
+}
+
+func TestNew(t *testing.T) {
+	key, _ := hex.DecodeString("6368616e676520746869732070617373776f726420746f206120736563726574")
+	type args struct {
+		method string
+		key    []byte
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Empty Keys",
+			args: args{
+				key: []byte{},
+			},
+			wantErr: true,
+		},
+		{
+			name: "Wrong Method",
+			args: args{
+				key:    key,
+				method: "Unknown",
+			},
+			wantErr: true,
+		},
+		{
+			name: "Short Key",
+			args: args{
+				key:    key[:KeySizeAES128-2],
+				method: AES128,
+			},
+		},
+		{
+			name: "Long Key",
+			args: args{
+				key:    key,
+				method: AES128,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := New(tt.args.method, tt.args.key)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("New() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got == nil && !tt.wantErr {
+				t.Errorf("New() failed = nil")
+			}
+		})
+	}
+}
+
+func TestCrypt_Set(t *testing.T) {
+	type args struct {
+		method string
+		key    interface{}
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name:    "No Key",
+			args:    args{},
+			wantErr: true,
+		},
+		{
+			name: "Wrong Key Type",
+			args: args{
+				key: "Wrong",
+			},
+			wantErr: true,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			c := &Crypt{}
+			if err := c.Set(tt.args.method, tt.args.key); (err != nil) != tt.wantErr {
+				t.Errorf("Crypt.Set() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+
+	t.Run("Error in getCipher", func(t *testing.T) {
+		// Mock
+		orig := getCipher
+		getCipher = func(key []byte) (cipher.Block, error) {
+			return nil, auth.ErrNotSupported
+		}
+		defer func() { getCipher = orig }()
+
+		c := &Crypt{}
+
+		err := c.Set(AES128, []byte{1, 2, 3, 4, 5})
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+
+	})
+
+	t.Run("Error in getGCM", func(t *testing.T) {
+		// Mock
+		orig := getGCM
+		getGCM = func(cipher cipher.Block) (cipher.AEAD, error) {
+			return nil, auth.ErrNotSupported
+		}
+		defer func() { getGCM = orig }()
+
+		c := &Crypt{}
+
+		err := c.Set(AES128, []byte{1, 2, 3, 4, 5})
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+
+	})
+}
+
+func TestCrypt_Create(t *testing.T) {
+	t.Run("Non Initialized Call", func(t *testing.T) {
+		c := Crypt{}
+
+		_, err := c.Create([]byte("Test"), nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("No Plaintext", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, err = c.Create(nil, nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("Empty Plaintext", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, err = c.Create([]byte{}, nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("Read Random Error", func(t *testing.T) {
+		// Mock
+		orig := readRandom
+		readRandom = func(b []byte) (n int, err error) {
+			return 0, auth.ErrNotSupported
+		}
+		defer func() { readRandom = orig }()
+
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, err = c.Create([]byte("Example Plaintext"), nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+}
+
+func TestCrypt_Verify(t *testing.T) {
+	t.Run("Non Initialized Call", func(t *testing.T) {
+		c := Crypt{}
+
+		_, _, err := c.Verify([]byte("Test"), nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("No Ciphertext", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, _, err = c.Verify(nil, nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("Empty Ciphertext", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, _, err = c.Verify([]byte{}, nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("Short Ciphertext", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		ciphertext, err := c.Create([]byte("Example Plaintext"), nil)
+		if err != nil {
+			t.Errorf("Failed in Crypt.Create() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		_, _, err = c.Verify(ciphertext[:c.gcm.NonceSize()+2], nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+
+	t.Run("Decrypt Error", func(t *testing.T) {
+		c, err := New(AES128, []byte("Test Key"))
+		if err != nil {
+			t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		ciphertext, err := c.Create([]byte("Example Plaintext"), nil)
+		if err != nil {
+			t.Errorf("Failed in Crypt.Create() Expected no Errors, Got - %v", err)
+			return
+		}
+
+		ciphertext[2] = 0
+		ciphertext[8] = 0
+
+		_, _, err = c.Verify(ciphertext[:len(ciphertext)-2], nil)
+		if err == nil {
+			t.Errorf("Expected Error but got nil")
+			return
+		}
+	})
+}
+
+func TestCrypt_Others(t *testing.T) {
+	c, err := New(AES128, []byte("Test Key"))
+	if err != nil {
+		t.Errorf("Failed in New() Expected no Errors, Got - %v", err)
+		return
+	}
+
+	ciphertext, err := c.Encrypt([]byte("Example Plaintext"))
+	if err != nil {
+		t.Errorf("Failed in Crypt.Encrypt() Expected no Errors, Got - %v", err)
+		return
+	}
+
+	c2, err := New(AES128, []byte("Test Key"))
+	if err != nil {
+		t.Errorf("Failed in New() II Expected no Errors, Got - %v", err)
+		return
+	}
+
+	plaintext, nonce, err := c2.Decrypt(ciphertext)
+	if err != nil {
+		t.Errorf("Failed in Crypt.Decrypt() Expected no Errors, Got - %v", err)
+		return
+	}
+
+	if subtle.ConstantTimeCompare(plaintext, []byte("Example Plaintext")) != 1 {
+		t.Errorf("Expted result to be 'Example Plaintext', got %q", string(plaintext))
+		return
+	}
+
+	if nonce == nil {
+		t.Errorf("Expected Nonce but got nil")
+		return
+	}
 }
