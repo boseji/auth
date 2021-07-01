@@ -111,7 +111,7 @@ func (c *HSTokenClaims) Valid() error {
 	ex := c.ExpiresAt
 	t := time.Unix(ex, 0)
 	if time.Now().After(t) {
-		return fmt.Errorf("Token has already expired")
+		return fmt.Errorf("token has already expired")
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ func newHSTokenSigned(method jwt.SigningMethod, claims jwt.Claims, key []byte) (
 // GetHSToken function Provides a way to generate a JWT of HS256, HS384 and HS512 type tokens
 func GetHSToken(session string, key []byte, d DigestIt, opt ...HSTokenOptions) (string, error) {
 
-	if key == nil || len(key) == 0 {
+	if len(key) == 0 {
 		return "", ErrParameter
 	}
 
@@ -182,7 +182,7 @@ func GetHSToken(session string, key []byte, d DigestIt, opt ...HSTokenOptions) (
 	}
 
 	// Process the hsTokenFn with Options
-	if opt != nil {
+	if len(opt) > 0 {
 		for _, oFn := range opt {
 			h = oFn(h)
 		}
@@ -240,7 +240,7 @@ func CheckHSToken(signedToken string, key []byte, d DigestIt) (
 		&HSTokenClaims{},
 		func(tok *jwt.Token) (interface{}, error) {
 			if tok.Method.Alg() != alg.Alg() {
-				return nil, fmt.Errorf("Invalid signing method")
+				return nil, fmt.Errorf("invalid signing method")
 			}
 			return key, nil
 		},

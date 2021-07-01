@@ -12,6 +12,12 @@ import (
 	"github.com/gofrs/uuid/v3"
 )
 
+// For Random String Generation
+const letterBytes = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-" +
+	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-" +
+	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-" +
+	"0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ_-"
+
 // For Mock
 var readFull = io.ReadFull
 
@@ -29,6 +35,22 @@ func GetRandom(size int) ([]byte, error) {
 	}
 
 	return buf, nil
+}
+
+// RandString generates a random string array based on the given size
+func RandString(size int) (s string, err error) {
+	r, err := GetRandom(size)
+	if err != nil {
+		err = fmt.Errorf("failed to get random number array - %w", err)
+		return
+	}
+
+	b := make([]byte, size)
+	for i, v := range r {
+		b[i] = letterBytes[v]
+	}
+
+	return string(b), nil
 }
 
 // For Mock

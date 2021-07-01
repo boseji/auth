@@ -349,8 +349,7 @@ func TestDigest_Misc(t *testing.T) {
 		}
 	})
 	t.Run("Err Hash func Digest", func(t *testing.T) {
-		var b badMockDigest
-		b = "BadMock"
+		b := badMockDigest("BadMock")
 		RegisterDigestFunction("BadMock", &b)
 		defer func() { delete(digestFuncs, "BadMock") }()
 

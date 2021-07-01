@@ -178,7 +178,7 @@ func (h *hashFn) Size() int {
 
 // Get method implementation for DigestIt
 func (h *hashFn) Get(data []byte) ([]byte, error) {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return nil, ErrParameter
 	}
 
@@ -201,7 +201,7 @@ func (h *hashFn) Create(data []byte, _ interface{}) (output []byte, err error) {
 
 // Verify Method from Auth interface can be used for Compare
 func (h *hashFn) Verify(hash1 []byte, hash2 interface{}) (h1 []byte, h2 interface{}, err error) {
-	if hash1 == nil || len(hash1) == 0 || hash2 == nil {
+	if len(hash1) == 0 || hash2 == nil {
 		return nil, nil, ErrParameter
 	}
 	buf, ok := hash2.([]byte)
@@ -227,7 +227,7 @@ func (h *hashFn) Set(method string, _ interface{}) error {
 
 // Get method implementation for DigestIt
 func (h *hmacFn) Get(data []byte) ([]byte, error) {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return nil, ErrParameter
 	}
 
@@ -265,7 +265,7 @@ var bcryptGenerate = bcrypt.GenerateFromPassword
 
 // Generate creates the Bcrypt digest of the password
 func (b *bcryptFn) Generate(password []byte, cost int) ([]byte, error) {
-	if password == nil || len(password) == 0 {
+	if len(password) == 0 {
 		return nil, ErrParameter
 	}
 
@@ -428,7 +428,7 @@ func Digest(d DigestIt, data []byte, opts ...DigestOptions) ([]byte, error) {
 	}
 
 	// Process Options
-	if opts != nil {
+	if len(opts) > 0 {
 		for _, option := range opts {
 			dig = option(dig)
 		}

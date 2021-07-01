@@ -15,12 +15,12 @@ var badMockEncoder = &EncodeIt{
 }
 
 // Used only for Test Cases
-func removeEncoder(name string) {
-	encodersLock.Lock()
-	defer encodersLock.Unlock()
+// func removeEncoder(name string) {
+// 	encodersLock.Lock()
+// 	defer encodersLock.Unlock()
 
-	delete(encoders, name)
-}
+// 	delete(encoders, name)
+// }
 
 func TestEncode(t *testing.T) {
 

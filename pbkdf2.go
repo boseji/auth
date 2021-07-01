@@ -18,7 +18,6 @@ type pbkdf2Fn struct {
 	rounds int
 	size   int
 	salt   []byte
-	src    []byte
 }
 
 // Pbkdf2Options type provides a way to create functional options for PBKDF2
@@ -75,7 +74,7 @@ func Pbkdf2(password []byte, d DigestIt, opt ...Pbkdf2Options) (
 	salt []byte,
 	err error,
 ) {
-	if password == nil || len(password) == 0 {
+	if len(password) == 0 {
 		return nil, nil, ErrParameter
 	}
 
@@ -98,7 +97,7 @@ func Pbkdf2(password []byte, d DigestIt, opt ...Pbkdf2Options) (
 	}
 
 	options := &pbkdf2Fn{}
-	if opt != nil {
+	if len(opt) > 0 {
 		for _, oFn := range opt {
 			options = oFn(options)
 		}

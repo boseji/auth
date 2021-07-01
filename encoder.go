@@ -80,7 +80,7 @@ func init() {
 
 // Encode is Generic EncodeToString function for All byte Arrays
 func Encode(f *EncodeIt, data []byte) string {
-	if data == nil || len(data) == 0 {
+	if len(data) == 0 {
 		return ""
 	}
 
@@ -118,7 +118,7 @@ func (e *EncodeIt) Create(data []byte, encode interface{}) (output []byte, err e
 	if en {
 		result := Encode(e, data)
 		if result == "" {
-			return nil, fmt.Errorf("Failed to encode in EncodeIt.Create")
+			return nil, fmt.Errorf("failed to encode in EncodeIt.Create")
 		}
 		return []byte(result), nil
 	}

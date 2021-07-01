@@ -1,4 +1,4 @@
-# auth - Easy to Use Authentication Package ![Go](https://github.com/boseji/auth/workflows/Go/badge.svg)
+# auth - Easy to Use Authentication Package ![Go](https://github.com/boseji/auth/workflows/Go/badge.svg) [![Go Reference](https://pkg.go.dev/badge/github.com/boseji/auth.svg)](https://pkg.go.dev/github.com/boseji/auth)
 
 This package provides quick easy to use methods and functions to perform
 various authentication activities in applications.

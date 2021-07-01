@@ -111,3 +111,55 @@ func TestUUIDv4(t *testing.T) {
 		})
 	}
 }
+
+func TestRandString(t *testing.T) {
+	type args struct {
+		size int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{
+			name: "Bad Size",
+			args: args{
+				size: 0,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Negative Size",
+			args: args{
+				size: -5,
+			},
+			wantErr: true,
+		},
+		{
+			name: "Good Case",
+			args: args{
+				size: 5,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := RandString(tt.args.size)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("RandString() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+		})
+	}
+}
+
+func TestRandString_GetRandomErr(t *testing.T) {
+	orig := readFull
+	readFull = badMockReadFull
+	defer func() { readFull = orig }()
+
+	_, err := RandString(5)
+	if err == nil {
+		t.Errorf("GetRandom() error = %v, wantErr %v", err, ErrNotSupported)
+	}
+}
